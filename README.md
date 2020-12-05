@@ -1,4 +1,4 @@
-# Example: rqlite
+# Example: private rqlite
 
 ## Setup
 
@@ -60,6 +60,7 @@ Use a rqlite-compatible client to connect within your private network to `global
 In a different app with private networking on also, you can inject the `rqlited` binary and start it in read-only mode:
 
 ```
+export PRIVATE_NET_IP=`getent hosts fly-local-6pn | cut -d ' ' -f1`
 rqlited \
     -disco-id $DISCO_ID \
     -http-addr "0.0.0.0:4001" -http-adv-addr "[$PRIVATE_NET_IP]:4001" \
