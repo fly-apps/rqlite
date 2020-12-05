@@ -1,0 +1,21 @@
+# fly.toml file generated for rqlite on 2020-11-30T15:19:20-05:00
+
+app = "rqlite"
+
+[experimental]
+private_network = true
+
+[[mounts]]
+source = "data3"
+destination = "/data"
+
+[[services]]
+internal_port = 4001
+protocol = "tcp"
+
+[services.concurrency]
+hard_limit = 25
+soft_limit = 20
+
+[[services.ports]]
+port = "10000"

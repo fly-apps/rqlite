@@ -1,0 +1,26 @@
+#!/bin/bash
+
+set -e
+
+PRIVATE_NET_IP=`getent hosts fly-local-6pn | cut -d ' ' -f1`
+
+echo "private net ip: ${PRIVATE_NET_IP}"
+
+function cleanup() {
+    echo "Cleaning up after trap EXIT"
+    curl -XDELETE -L --post301 http://discovery.rqlite.com/$DISCO_ID -H "Content-Type: application/json" -d "{\"addr\": \"[${PRIVATE_NET_IP}]:4001\"}"
+}
+
+# trap cleanup EXIT
+
+if [ "$1" = "rqlited" ]; then
+    exec rqlited \
+        -disco-id $DISCO_ID \
+        -http-addr "0.0.0.0:4001" -http-adv-addr "[$PRIVATE_NET_IP]:4001" \
+        -raft-addr "0.0.0.0:4002" -raft-adv-addr "[$PRIVATE_NET_IP]:4002" \
+        -raft-timeout 5s -raft-election-timeout 10s \
+        -on-disk \
+        /data/db
+else
+    exec "$@"
+fi
