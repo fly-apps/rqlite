@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
 
 WORKDIR /opt
 
-ARG RQLITE_VERSION=5.6.0
+ARG RQLITE_VERSION=5.7.0
 
 RUN curl -L https://github.com/rqlite/rqlite/releases/download/v$RQLITE_VERSION/rqlite-v$RQLITE_VERSION-linux-amd64.tar.gz \
     -o rqlite-linux-amd64.tar.gz \

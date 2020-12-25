@@ -1,0 +1,7 @@
+# fly.toml file generated for rqlite-example on 2020-12-24T11:19:52-06:00
+
+app = "rqlite-example"
+
+[[mounts]]
+  destination = "/data"
+  source = "rqlite_data"

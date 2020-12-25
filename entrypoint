@@ -1,24 +1,55 @@
 #!/bin/bash
-
 set -e
 
 PRIVATE_NET_IP=`getent hosts fly-local-6pn | cut -d ' ' -f1`
+if [[ "$PRIVATE_NET_IP" == "" ]]; then
+    PRIVATE_NET_IP="127.0.0.1"
+fi
 
-echo "private net ip: ${PRIVATE_NET_IP}"
+if [ -z ${FLY_APP_NAME} ]; then
+    FLY_APP_NAME="local"
+fi
+
+joins=""
+if [ ! -f /data/db/raft.db ]; then # need to join cluster
+    echo "Discovering joins"
+    # get ips for other vms
+    ips=`dig +noall +answer aaaa $FLY_APP_NAME.internal @fdaa::3 | grep -v -F "$PRIVATE_NET_IP" | grep -F "$FLY_APP_NAME.internal. " | awk '{ printf "[%s]\n", $5 }'`
+
+    if [ "$ips" != "" ]; then
+        joins=`echo "$ips" | awk '{ printf "http://%s:4001\n", $1 }' | paste -s -d, -` # comma separated join addresses
+        joins="-join $joins"
+    fi
+fi
+
+if [[ "$PRIVATE_NET_IP" != "127.0.0.1" ]]; then 
+    node_id=$(echo $PRIVATE_NET_IP | sed "s/^fdaa:0:1:a7b://" | sed "s/://g" )
+    node_id="-node-id $node_id"
+fi
 
 function cleanup() {
-    echo "Cleaning up after trap EXIT"
-    curl -XDELETE -L --post301 http://discovery.rqlite.com/$DISCO_ID -H "Content-Type: application/json" -d "{\"addr\": \"[${PRIVATE_NET_IP}]:4001\"}"
+    echo "Cleaning up after EXIT"
 }
 
-# trap cleanup EXIT
+trap cleanup EXIT
 
 if [ "$1" = "rqlited" ]; then
+    echo rqlited \
+        $joins \
+        $node_id \
+        -http-addr ":4001" -http-adv-addr "[$PRIVATE_NET_IP]:4001" \
+        -raft-addr ":4002" -raft-adv-addr "[$PRIVATE_NET_IP]:4002" \
+        -raft-timeout 5s -raft-election-timeout 60s \
+        -join-attempts 100 \
+        -on-disk \
+        /data/db
     exec rqlited \
-        -disco-id $DISCO_ID \
-        -http-addr "0.0.0.0:4001" -http-adv-addr "[$PRIVATE_NET_IP]:4001" \
-        -raft-addr "0.0.0.0:4002" -raft-adv-addr "[$PRIVATE_NET_IP]:4002" \
-        -raft-timeout 5s -raft-election-timeout 10s \
+        $joins \
+        $node_id \
+        -http-addr ":4001" -http-adv-addr "[$PRIVATE_NET_IP]:4001" \
+        -raft-addr ":4002" -raft-adv-addr "[$PRIVATE_NET_IP]:4002" \
+        -raft-timeout 5s -raft-election-timeout 60s \
+        -join-attempts 100 \
         -on-disk \
         /data/db
 else
